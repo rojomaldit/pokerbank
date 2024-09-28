@@ -63,16 +63,11 @@ class PokerSettlementApp:
     def __init__(self, master):
         self.master = master
         master.title("Distribución de Ganancias del Poker")
-
-
+        master.geometry("800x600")
 
         self.players = [
            
         ]
-
-     
-
-    
 
         # Player Input Frame
         self.input_frame = tk.Frame(master)
@@ -121,22 +116,16 @@ class PokerSettlementApp:
         agus = Player("Agus", 16525, 0)
         chenzo = Player("Chenzo", 16525, 0)
 
-        self.add_player(diego)
-        self.add_player(red)
-        self.add_player(nou)
-        self.add_player(facu)
-        self.add_player(lolo)
-        self.add_player(juanpa)
-        self.add_player(franco)
-        self.add_player(ivancho)
-        self.add_player(agus)
-        self.add_player(chenzo)
-
-        # red = Player("Red", 10000, 15000)
-        # facu = Player("Facu", 10000, 5000)
-        # self.add_player(red)
-        # self.add_player(facu)
-
+        self.add_existing_player(diego)
+        self.add_existing_player(red)
+        self.add_existing_player(nou)
+        self.add_existing_player(facu)
+        self.add_existing_player(lolo)
+        self.add_existing_player(juanpa)
+        self.add_existing_player(franco)
+        self.add_existing_player(ivancho)
+        self.add_existing_player(agus)
+        self.add_existing_player(chenzo)
 
 
     def add_player(self):
@@ -166,7 +155,7 @@ class PokerSettlementApp:
         self.invested_entry.delete(0, tk.END)
         self.final_entry.delete(0, tk.END)
 
-    def add_player(self, player):
+    def add_existing_player(self, player):
         self.players.append(player)
         self.players_listbox.insert(tk.END, f"{player.name}: Invertido ${player.total_invested:.2f}, Final ${player.final_amount:.2f}")
 
@@ -187,10 +176,13 @@ class PokerSettlementApp:
 
         if movements:
             self.results_text.insert(tk.END, "Movimientos para balancear las cuentas:\n")
+            print("Movimientos para balancear las cuentas:\n")
             for movement in movements:
                 self.results_text.insert(tk.END, movement + "\n")
+                print(movement + "\n")
         else:
             self.results_text.insert(tk.END, "No se requieren movimientos.")
+            print("No se requieren movimientos.")
 
         # Reset players for next calculation
         self.players = []
