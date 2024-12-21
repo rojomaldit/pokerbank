@@ -1,195 +1,104 @@
-import tkinter as tk
-from tkinter import messagebox
+from typing import List, Dict, Tuple
+from dataclasses import dataclass
+from collections import defaultdict
 
-class Player:
-    def __init__(self, name, total_invested, final_amount):
-        self.name = name
-        self.total_invested = total_invested
-        self.final_amount = final_amount
-        self.balance = final_amount - self.total_invested
+@dataclass
+class Jugador:
+    nombre: str
+    balance_final: float
+    apuesta_inicial: float
 
-def calculate_movements(players):
-    debtors = []
-    creditors = []
+    @property
+    def deuda(self) -> float:
+        """Calcula cuánto debe o le deben al jugador."""
+        return self.balance_final - self.apuesta_inicial
 
-    # Calculate total balance
-    total_balance = sum(player.balance for player in players)
-    total_invested = sum(player.total_invested for player in players)
-    total_final = sum(player.final_amount for player in players)
-
-    print("Total balance:")
-    print(total_balance)
-    print("Total invested:")
-    print(total_invested)
-    print("Total final:")
-    print(total_final)
-
-    messagebox.showinfo("Resumen de Inversiones", f"Total invertido: ${total_invested:.2f}\nTotal final: ${total_final:.2f}\nBalance total: ${total_balance:.2f}")
-
-
-    if abs(total_balance) > 0.01:  # Allowing a small epsilon for floating point errors
-        messagebox.showerror("Error", "La suma de los balances no es cero. Verifica las inversiones y los montos finales.")
-        return []
-
-    # Separate players into debtors and creditors
-    for player in players:
-        if player.balance < -0.01:
-            debtors.append(player)
-        elif player.balance > 0.01:
-            creditors.append(player)
-
-    movements = []
-
-    # Make movements between debtors and creditors
-    while debtors and creditors:
-        debtor = debtors[0]
-        creditor = creditors[0]
-
-        amount_to_transfer = min(-debtor.balance, creditor.balance)
-        movements.append(f"{debtor.name} paga a {creditor.name} ${amount_to_transfer:.2f}")
-
-        debtor.balance += amount_to_transfer
-        creditor.balance -= amount_to_transfer
-
-        if abs(debtor.balance) < 0.01:
-            debtors.pop(0)
-        if abs(creditor.balance) < 0.01:
-            creditors.pop(0)
-
-    return movements
-
-# GUI Application
-class PokerSettlementApp:
-    def __init__(self, master):
-        self.master = master
-        master.title("Distribución de Ganancias del Poker")
-        master.geometry("800x600")
-
-        self.players = [
-           
-        ]
-
-        # Player Input Frame
-        self.input_frame = tk.Frame(master)
-        self.input_frame.pack(pady=10)
-
-        tk.Label(self.input_frame, text="Nombre:").grid(row=0, column=0, padx=5)
-        tk.Label(self.input_frame, text="Total Invertido:").grid(row=0, column=1, padx=5)
-        tk.Label(self.input_frame, text="Monto Final:").grid(row=0, column=2, padx=5)
-
-        self.name_entry = tk.Entry(self.input_frame)
-        self.name_entry.grid(row=1, column=0, padx=5)
-        self.invested_entry = tk.Entry(self.input_frame)
-        self.invested_entry.grid(row=1, column=1, padx=5)
-        self.final_entry = tk.Entry(self.input_frame)
-        self.final_entry.grid(row=1, column=2, padx=5)
-
-        self.add_player_button = tk.Button(self.input_frame, text="Agregar Jugador", command=self.add_player)
-        self.add_player_button.grid(row=1, column=3, padx=5)
-
-        # Players List
-        self.players_frame = tk.Frame(master)
-        self.players_frame.pack(pady=10)
-
-        self.players_listbox = tk.Listbox(self.players_frame, width=50)
-        self.players_listbox.pack()
-
-        # Calculate Movements Button
-        self.calculate_button = tk.Button(master, text="Calcular Movimientos", command=self.calculate)
-        self.calculate_button.pack(pady=10)
-
-        # Results Frame
-        self.results_frame = tk.Frame(master)
-        self.results_frame.pack(pady=10)
-
-        self.results_text = tk.Text(self.results_frame, width=60, height=15)
-        self.results_text.pack()
-
-        red = Player("Red", 16525, 23650)
-        diego = Player("Diego", 16525, 10700)
-        nou = Player("Nou", 16525, 57700)
-        facu = Player("Facu", 48525, 10600)
-        lolo = Player("Lolo", 16525, 13000)
-        juanpa = Player("Juanpa", 16525, 22500)
-        franco = Player("Franco", 32525, 7950)
-        ivancho = Player("Ivancho", 16525, 67150)
-        agus = Player("Agus", 16525, 0)
-        chenzo = Player("Chenzo", 16525, 0)
-
-        self.add_existing_player(diego)
-        self.add_existing_player(red)
-        self.add_existing_player(nou)
-        self.add_existing_player(facu)
-        self.add_existing_player(lolo)
-        self.add_existing_player(juanpa)
-        self.add_existing_player(franco)
-        self.add_existing_player(ivancho)
-        self.add_existing_player(agus)
-        self.add_existing_player(chenzo)
-
-
-    def add_player(self):
-        name = self.name_entry.get().strip()
-        total_invested = self.invested_entry.get().strip()
-        final_amount = self.final_entry.get().strip()
-
-        if not name or not total_invested or not final_amount:
-            messagebox.showwarning("Advertencia", "Por favor, completa todos los campos.")
-            return
-
-        try:
-            total_invested = float(total_invested)
-            final_amount = float(final_amount)
-        except ValueError:
-            messagebox.showerror("Error", "Los montos deben ser números.")
-            return
-
-        player = Player(name, total_invested, final_amount)
+def calcular_movimientos(jugadores: List[Jugador]) -> List[Tuple[str, str, float]]:
+    """
+    Calcula los movimientos mínimos necesarios para saldar las deudas.
+    Retorna una lista de tuplas (pagador, receptor, monto).
+    """
+    # Crear diccionario de deudas
+    deudas = {j.nombre: j.deuda for j in jugadores}
     
-        self.players.append(player)
+    # Verificar que la suma de deudas sea cercana a cero (considerando errores de punto flotante)
+    if abs(sum(deudas.values())) > 0.01:
+        raise ValueError("Error: La suma de deudas no es cero")
+    
+    # Separar deudores y acreedores
+    deudores = [(nombre, deuda) for nombre, deuda in deudas.items() if deuda < 0]
+    acreedores = [(nombre, deuda) for nombre, deuda in deudas.items() if deuda > 0]
+    
+    # Ordenar por monto absoluto de manera descendente
+    deudores.sort(key=lambda x: x[1])  # Más negativo primero
+    acreedores.sort(key=lambda x: x[1], reverse=True)  # Más positivo primero
+    
+    movimientos = []
+    i_deudor = 0
+    i_acreedor = 0
+    
+    # Mientras haya deudas por saldar
+    while i_deudor < len(deudores) and i_acreedor < len(acreedores):
+        deudor, deuda = deudores[i_deudor]
+        acreedor, credito = acreedores[i_acreedor]
+        
+        # Tomar el menor valor absoluto entre la deuda y el crédito
+        monto = min(-deuda, credito)
+        
+        # Registrar el movimiento
+        movimientos.append((deudor, acreedor, monto))
+        
+        # Actualizar los saldos
+        deudores[i_deudor] = (deudor, deuda + monto)
+        acreedores[i_acreedor] = (acreedor, credito - monto)
+        
+        # Avanzar índices si la deuda o crédito se saldó completamente
+        if abs(deuda + monto) < 0.01:
+            i_deudor += 1
+        if abs(credito - monto) < 0.01:
+            i_acreedor += 1
+    
+    return movimientos
 
-        self.players_listbox.insert(tk.END, f"{name}: Invertido ${total_invested:.2f}, Final ${final_amount:.2f}")
+def generar_informe(movimientos: List[Tuple[str, str, float]]) -> str:
+    """
+    Genera un informe legible de los movimientos necesarios.
+    """
+    informe = ["Movimientos necesarios para saldar balances:"]
+    for deudor, acreedor, monto in movimientos:
+        informe.append(f"{deudor} le paga a {acreedor} ${monto:.2f}")
+    return "\n".join(informe)
 
-        # Clear input fields
-        self.name_entry.delete(0, tk.END)
-        self.invested_entry.delete(0, tk.END)
-        self.final_entry.delete(0, tk.END)
+def main():
+    # Ejemplo de uso
+    jugadores = [
+        Jugador("Juanpa", 111000, 25000-11.11),
+        Jugador("Diego", 27200, 25000-11.11),
+        Jugador("Agus", 77850, 25000-11.11),
+        Jugador("Red", 0, 25000-11.11),
+        Jugador("Chenzo", 0, 40000-11.11),
+        Jugador("Nou", 17550, 25000-11.11),
+        Jugador("Nico", 51800, 75000-11.11),
+        Jugador("Facu", 54500, 50000-11.11),
+        Jugador("Franco", 0, 50000-11.11),
+    ]
 
-    def add_existing_player(self, player):
-        self.players.append(player)
-        self.players_listbox.insert(tk.END, f"{player.name}: Invertido ${player.total_invested:.2f}, Final ${player.final_amount:.2f}")
+    totalInvertido = 0
+    balanceFinal = 0
+    for j in jugadores:
+        totalInvertido += j.apuesta_inicial
+        balanceFinal += j.balance_final
 
-    def calculate(self):
-        if not self.players:
-            messagebox.showwarning("Advertencia", "No hay jugadores para calcular.")
-            return
+    print("Total Invertido: ", totalInvertido)
+    print("Total Deuda: ", balanceFinal)
+    if balanceFinal - totalInvertido > 0.01:
+        raise ValueError("Error: La suma de deudas no es cero")
+    
+    try:
+        movimientos = calcular_movimientos(jugadores)
+        print(generar_informe(movimientos))
+    except ValueError as e:
+        print(f"Error al calcular movimientos: {e}")
 
-        movements = calculate_movements(self.players)
-
-        self.results_text.delete(1.0, tk.END)
-
-        total_invested = sum(player.total_invested for player in self.players)
-        self.results_text.insert(tk.END, "Resumen de Inversiones:\n")
-        for player in self.players:
-            self.results_text.insert(tk.END, f"{player.name}: ${player.total_invested:.2f}\n")
-        self.results_text.insert(tk.END, f"Total invertido: ${total_invested:.2f}\n\n")
-
-        if movements:
-            self.results_text.insert(tk.END, "Movimientos para balancear las cuentas:\n")
-            print("Movimientos para balancear las cuentas:\n")
-            for movement in movements:
-                self.results_text.insert(tk.END, movement + "\n")
-                print(movement + "\n")
-        else:
-            self.results_text.insert(tk.END, "No se requieren movimientos.")
-            print("No se requieren movimientos.")
-
-        # Reset players for next calculation
-        self.players = []
-        self.players_listbox.delete(0, tk.END)
-
-# Run the application
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = PokerSettlementApp(root)
-    root.mainloop()
+    main()
